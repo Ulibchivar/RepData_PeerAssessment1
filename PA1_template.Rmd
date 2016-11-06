@@ -1,25 +1,103 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+output: github_document
 ---
+##Reading DATA into R 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+getwd()
+setwd("C:/Coursera/Reproducible Research/")
+data <- read.table("activity.csv", header=T, quote="\"", sep=",")
+```
+
+## Looking at data
+
+###Want to see just fist few rows and check if we have NA's, and how many if we do.
+
+```{r}
+echo = TRUE
+head(data)
+summary(data)
+```
+
+###Reminder what the variables are, taken from course site
+The variables included in this dataset are:
+
+*steps- Number of steps taking in a 5-minute interval (missing values are coded as NA)
+*date- The date on which the measurement was taken in YYYY-MM-DD format
+*interval- Identifier for the 5-minute interval in which measurement was taken
+
+##Calculate steps per day and visualize it
+```{r}
+echo = TRUE
+ss<- aggregate(data[,c("steps"),drop=FALSE],by=list(Date=data$date),FUN=sum,na.rm=FALSE)
+ss$steps<-as.numeric(ss$steps)
+hist(ss$steps, xlab="Number of Steps", main="Histogram of steps per day", col="red")
+```
+
+##Calculate mean and median with simple summary fuction
+```{r}
+echo = TRUE
+summary(ss)
+```
+
+##Time series
+```{r}
+aggint<- aggregate(data[,c("steps"),drop=FALSE],by=list(interval_avg=data$interval), FUN=mean,na.rm=TRUE)
+plot(aggint$interval_avg,aggint$steps, xlab="Intervals", ylab="Steps", main="Average steps per interval")
+lines(aggint$interval_avg,aggint$steps)
+```
+
+##Maximum number of steps
+```{r}
+echo = TRUE
+aggint[which.max(aggint$steps),]
+```
+
+##Create new data table with joining original table to average per interval table
+```{r}
+echo = TRUE
+names(aggint) <- c('interval_avg','Steps_avg')
+ data_new<- merge(data, aggint, by.x="interval", by.y="interval_avg", all.x=TRUE)  
+
+  for(i in 1:nrow(data_new)) {
+    
+     if(is.na(data_new$steps[i])) {
+        
+        data_new$steps[i] <- data_new$Steps_avg[i]
+}}
+```
 
 
-## Loading and preprocessing the data
 
 
+##Visualize new data with missing values replaced
+```{r}
+hist(data_new$steps, xlab="Number of Steps", main="Histogram of steps per day with replaced values", col="green")
+```
 
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+##Change formatting in dates and add weekday names
+```{r}
+echo = TRUE
+weekend_weekday <- data_new
+weekend_weekday$day_of_week2 <- as.Date(weekend_weekday$date)
+weekend_weekday$day_of_week <- weekdays(weekend_weekday$day_of_week2)
+weekend <- subset(weekend_weekday,day_of_week == c("Saturday","Sunday"))
+ weekdays <- subset(weekend_weekday,day_of_week != "Saturday" & day_of_week != "Sunday")
+ weekend_interval_steps <- aggregate(steps ~ interval, data = weekend, mean, na.rm=TRUE)
+ weekdays_interval_steps <- aggregate(steps ~ interval, data = weekdays, mean, na.rm=TRUE)
+ weekend_interval_steps$weekend_flag <- "Weekend"
+ weekdays_interval_steps$weekend_flag <- "Weekday"
+  week_combined <- rbind(weekend_interval_steps,weekdays_interval_steps)
+ week_combined$weekend_flag <- factor(week_combined$weekend_flag)
+ 
+ 
+ library("lattice")
+ xyplot(steps~interval | weekend_flag, data = week_combined,
+        main = "Comparison of weekend and weekday steps by time of day",
+        layout = c(1,2), 
+        type = "l",
+ )
+ 
+```
